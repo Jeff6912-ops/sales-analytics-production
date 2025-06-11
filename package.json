@@ -7,7 +7,6 @@
     "dev:dashboard": "cd apps/dashboard && npm run dev",
     "build:sales": "cd apps/sales && npm run build",
     "build:dashboard": "cd apps/dashboard && npm run build",
-    "build:all": "npm run build:sales && npm run build:dashboard",
     "start:sales": "cd apps/sales && npm run start",
     "start:dashboard": "cd apps/dashboard && npm run start"
   },
