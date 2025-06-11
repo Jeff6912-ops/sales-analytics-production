@@ -1,0 +1,88 @@
+﻿name: Deploy to VPS
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+        cache: 'npm'
+        
+    - name: Install and build applications
+      run: |
+        npm install
+        cd apps/sales && npm install && npm run build
+        cd ../dashboard && npm install && npm run build
+        
+    - name: Deploy to VPS
+      uses: appleboy/ssh-action@v1.0.3
+      with:
+        host: ${{ secrets.VPS_HOST }}
+        username: ${{ secrets.VPS_USERNAME }}
+        password: ${{ secrets.VPS_PASSWORD }}
+        script: |
+          echo "🚀 Starting deployment..."
+          cd ${{ secrets.VPS_PATH }}
+          
+          echo "📥 Pulling latest code..."
+          git pull origin main
+          
+          echo "📦 Installing dependencies..."
+          npm install
+          
+          echo "🏗️ Building sales page..."
+          cd apps/sales
+          npm install
+          npm run build
+          
+          echo "🏗️ Building dashboard..."
+          cd ../dashboard
+          npm install  
+          npm run build
+          
+          echo "🔄 Restarting applications..."
+          cd ../..
+          pm2 restart ecosystem.config.js
+          pm2 save
+          
+          echo "✅ Deployment complete!"
+          
+    - name: Verify deployment
+      uses: appleboy/ssh-action@v1.0.3
+      with:
+        host: ${{ secrets.VPS_HOST }}
+        username: ${{ secrets.VPS_USERNAME }}
+        password: ${{ secrets.VPS_PASSWORD }}
+        script: |
+          echo "🔍 Verifying deployment..."
+          sleep 10
+          pm2 status
+          
+          echo "🌐 Testing sales page..."
+          if curl -f http://localhost:3001 > /dev/null 2>&1; then
+            echo "✅ Sales page is running"
+          else
+            echo "❌ Sales page failed"
+            exit 1
+          fi
+          
+          echo "📊 Testing dashboard..."  
+          if curl -f http://localhost:3002 > /dev/null 2>&1; then
+            echo "✅ Dashboard is running"
+          else
+            echo "❌ Dashboard failed"
+            exit 1
+          fi
+          
+          echo "🎉 All systems operational!"
